@@ -1,0 +1,177 @@
+const express = require("express")
+const router = express.Router();
+const db = require('../db'); // adjust path if needed
+const CryptoJS = require("crypto-js");
+const apiLogger = require("../middleware/apiLogger");
+
+
+
+router.post("/create-admin", apiLogger, async (req, res) => {
+  const { phone, password } = req.body;
+
+  if (!phone || !password) {
+    return res.status(400).json({ error: "Username and password are required" });
+  }
+
+  try {
+    // Check if the admin already exists
+    const existingAdmins = await db.query("SELECT * FROM users WHERE phone_number = ?", [phone]);
+
+    if (existingAdmins.length > 0) {
+      return res.status(409).json({ error: "Admin with this contact already exists" });
+    }
+
+    // Encrypt the password
+    const encryptedPassword = CryptoJS.AES.encrypt(password, process.env.SECRET_KEY).toString();
+
+    // Insert the new admin into the database
+    await db.query("INSERT INTO users (phone_number, password) VALUES (?, ?)", [phone, encryptedPassword]);
+
+    res.status(201).json({ message: "Admin created successfully" });
+  } catch (error) {
+    console.error("Error creating admin:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+);
+
+router.post("/login-admins", apiLogger, async (req, res) => {
+  const { phone, password } = req.body;
+
+  if (!phone || !password) {
+    return res.status(400).json({ error: "Username and password are required" });
+  }
+
+  try {
+    const query = "SELECT * FROM users WHERE phone_number = ?";
+    const results = await db.query(query, [phone]);
+
+    if (results.length === 0) {
+      return res.status(401).json({ error: "Invalid username or password" });
+    }
+
+    const admin = results[0];
+    const decryptedPassword = CryptoJS.AES.decrypt(admin.password, process.env.SECRET_KEY).toString(CryptoJS.enc.Utf8);
+
+    if (decryptedPassword !== password) {
+      return res.status(401).json({ error: "Invalid username or password" });
+    }
+
+    // Successful login
+    res.status(200).json({ message: "Login successful", adminId: admin.id });
+  } catch (error) {
+    console.error("Error during admin login:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/get-admins", apiLogger, async (req, res) => {
+    try {
+        const query = "SELECT id, phone_number FROM users";
+        const results = await db.query(query);
+        if (results.length === 0) {
+            return res.status(404).json({ error: "No admins found" });
+        }
+        res.status(200).json({ admins: results });
+    } catch (error) {
+        console.error("Error fetching admins:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+})
+
+router.post("/delete-admin", apiLogger, async (req, res) => {
+  const { adminId } = req.body;
+
+  if (!adminId) {
+    return res.status(400).json({ error: "Admin ID is required" });
+  }
+
+  try {
+    // Check if the admin exists
+    const existingAdmins = await db.query("SELECT * FROM users WHERE id = ?", [adminId]);
+
+    if (existingAdmins.length === 0) {
+      return res.status(404).json({ error: "Admin not found" });
+    }
+
+    // Delete the admin from the database
+    await db.query("DELETE FROM users WHERE id = ?", [adminId]);
+
+    res.status(200).json({ message: "Admin deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting admin:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/update-question", apiLogger, async (req, res) => {
+  const { question } = req.body;
+
+  if (
+    !question ||
+    !question.question_id ||
+    !question.question_text ||
+    !Array.isArray(question.options)
+  ) {
+    return res.status(400).json({ error: "Invalid request: question_id, text, and options are required" });
+  }
+
+  const { question_id, question_text, options } = question;
+
+  try {
+    // 1. Update the question text
+    await db.query(
+      `UPDATE questions SET text = ? WHERE id = ?`,
+      [question_text, question_id]
+    );
+
+    // 2. Get existing options from DB
+    const existingOptions = await db.query(
+      `SELECT id FROM options WHERE question_id = ?`,
+      [question_id]
+    );
+    const existingOptionIds = existingOptions.map(opt => opt.id);
+
+    const incomingOptionIds = [];
+
+    // 3. Process each option
+    for (const opt of options) {
+      if (!opt.option_text || opt.rating == null) continue;
+
+      if (opt.option_id && opt.option_id !== 0) {
+        // Update existing option
+        await db.query(
+          `UPDATE options SET text = ?, rating = ? WHERE id = ? AND question_id = ?`,
+          [opt.option_text, opt.rating, opt.option_id, question_id]
+        );
+        incomingOptionIds.push(opt.option_id);
+      } else if (opt.option_id === 0) {
+        // Insert new option
+        const result = await db.query(
+          `INSERT INTO options (question_id, text, rating) VALUES (?, ?, ?)`,
+          [question_id, opt.option_text, opt.rating]
+        );
+        incomingOptionIds.push(result.insertId);
+      }
+    }
+
+    // 4. Delete options that were removed by the admin
+    const toDelete = existingOptionIds.filter(id => !incomingOptionIds.includes(id));
+if (toDelete.length > 0) {
+  const placeholders = toDelete.map(() => '?').join(', ');
+  await db.query(
+    `DELETE FROM options WHERE id IN (${placeholders}) AND question_id = ?`,
+    [...toDelete, question_id]
+  );
+}
+
+    res.status(200).json({ message: "Question and options updated successfully" });
+
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] ❌ Error updating question:`, err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+module.exports = router;
