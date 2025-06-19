@@ -4,6 +4,8 @@ const db = require('../db'); // adjust path if needed
 const CryptoJS = require("crypto-js");
 const apiLogger = require("../middleware/apiLogger");
 
+const SECRET_KEY = process.env.SECRET_KEY 
+
 
 
 router.post("/create-admin", apiLogger, async (req, res) => {
@@ -170,6 +172,57 @@ if (toDelete.length > 0) {
   } catch (err) {
     console.error(`[${new Date().toISOString()}] ❌ Error updating question:`, err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+// Add new section
+router.post('/add-section', async (req, res) => {
+  const { data: encryptedData } = req.body;
+
+  if (!encryptedData) {
+    return res.status(400).json({ error: 'Missing encrypted payload' });
+  }
+
+  // Decrypt incoming request
+  let sectionData;
+  try {
+    const bytes = CryptoJS.AES.decrypt(encryptedData, SECRET_KEY);
+    const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+    sectionData = JSON.parse(decryptedText);
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] ❌ Decryption failed:`, error);
+    return res.status(400).json({ error: 'Invalid encrypted payload' });
+  }
+
+  const { name, description = null, exam_name = null } = sectionData;
+
+  // Validation
+  if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    return res.status(400).json({ error: 'Section name is required and must be a string' });
+  }
+
+  try {
+    const result = await db.query(
+      'INSERT INTO sections (name, description, exam_name) VALUES (?, ?, ?)',
+      [name.trim(), description, exam_name]
+    );
+
+    const responsePayload = {
+      message: 'Section added successfully',
+      section_id: result.insertId
+    };
+
+    const encryptedResponse = CryptoJS.AES.encrypt(
+      JSON.stringify(responsePayload),
+      SECRET_KEY
+    ).toString();
+
+    res.status(201).json({ data: encryptedResponse });
+
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] ❌ Error adding section:`, err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

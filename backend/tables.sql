@@ -16,6 +16,7 @@ CREATE TABLE sections (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   description TEXT,
+  exam_name VARCHAR(255),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -77,15 +78,15 @@ CREATE TABLE users (
 
 -- insert sections 
 
-INSERT INTO sections (name, description) VALUES ('Technical Background & Skills', 'Section A');
-INSERT INTO sections (name, description) VALUES ('Technical Knowledge', 'Section B: MCQ Quiz: Segments of Computer Engineering');
-INSERT INTO sections (name, description) VALUES ('Project Experience', 'Section C');
-INSERT INTO sections (name, description) VALUES ('Role Preference', 'Section D: MCQ');
-INSERT INTO sections (name, description) VALUES ('Skill Confidence & Interest', 'Section E');
-INSERT INTO sections (name, description) VALUES ('Career Goals & Preferences', 'Section F');
-INSERT INTO sections (name, description) VALUES ('Technical Preferences', 'Section G');
-INSERT INTO sections (name, description) VALUES ('Soft Skills & Workstyle', 'Section H');
-INSERT INTO sections (name, description) VALUES ('Motivation & Fit', 'Section I');
+INSERT INTO sections (name, description) VALUES ('Technical Background & Skills', 'Section A' , "ABCD");
+INSERT INTO sections (name, description) VALUES ('Technical Knowledge', 'Section B: MCQ Quiz: Segments of Computer Engineering' , "ABCD");
+INSERT INTO sections (name, description) VALUES ('Project Experience', 'Section C' , "ABCD");
+INSERT INTO sections (name, description) VALUES ('Role Preference', 'Section D: MCQ' , "ABCD");
+INSERT INTO sections (name, description) VALUES ('Skill Confidence & Interest', 'Section E' , "ABCD");
+INSERT INTO sections (name, description) VALUES ('Career Goals & Preferences', 'Section F' , "ABCD");
+INSERT INTO sections (name, description) VALUES ('Technical Preferences', 'Section G' , "ABCD");
+INSERT INTO sections (name, description) VALUES ('Soft Skills & Workstyle', 'Section H' , "ABCD");
+INSERT INTO sections (name, description) VALUES ('Motivation & Fit', 'Section I' , "ABCD");
 
 
 -- insert questions and options
