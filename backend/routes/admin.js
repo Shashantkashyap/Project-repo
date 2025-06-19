@@ -58,7 +58,7 @@ router.post("/login-admins", apiLogger, async (req, res) => {
     }
 
     // Successful login
-    res.status(200).json({ message: "Login successful", adminId: admin.id });
+    res.status(200).json({success: true , message: "Login successful", adminId: admin.id });
   } catch (error) {
     console.error("Error during admin login:", error);
     res.status(500).json({ error: "Internal server error" });

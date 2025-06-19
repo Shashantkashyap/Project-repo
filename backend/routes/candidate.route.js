@@ -7,11 +7,11 @@ const apiLogger = require("../middleware/apiLogger");
 const SECRET_KEY = process.env.SECRET_KEY 
 
 // GET all questions 
-router.get('/questions', apiLogger, async (req, res) => {
+router.get('/questions', async (req, res) => {
   const query = `
     SELECT 
       s.id AS section_id, s.name AS section_name,
-      q.id AS question_id, q.text AS question_text,
+      q.id AS question_id, q.question_text AS question_text,
       o.id AS option_id, o.text AS option_text, o.rating
     FROM sections s
     JOIN questions q ON q.section_id = s.id
@@ -53,13 +53,17 @@ router.get('/questions', apiLogger, async (req, res) => {
       }
     });
 
-    const response = Array.from(sectionsMap.values()).map(section => ({
+    const plainResponse = Array.from(sectionsMap.values()).map(section => ({
       section_id: section.section_id,
       section_name: section.section_name,
       questions: Array.from(section.questionsMap.values())
     }));
 
-    const encrypted = CryptoJS.AES.encrypt(JSON.stringify(response), SECRET_KEY).toString();
+    // Attach original response to res.locals so logger can access it
+    res.locals._logResponse = plainResponse;
+
+    // Encrypt before sending
+    const encrypted = CryptoJS.AES.encrypt(JSON.stringify(plainResponse), SECRET_KEY).toString();
 
     res.status(200).json({ data: encrypted });
   } catch (err) {
@@ -72,14 +76,31 @@ router.get('/questions', apiLogger, async (req, res) => {
 // submit responses
 
 router.post('/submit-responses', apiLogger, async (req, res) => {
-  const { sso_id, responses } = req.body;
+ const { data } = req.body; // 🔐 encrypted data
+
+  if (!data) {
+    return res.status(400).json({ error: 'Missing encrypted payload' });
+  }
+
+  let decrypted;
+  try {
+    const bytes = CryptoJS.AES.decrypt(data, SECRET_KEY);
+    decrypted = JSON.parse(bytes.toString(CryptoJS.enc.Utf8)); // 🔓 now a JS object
+  } catch (err) {
+    console.error('❌ Failed to decrypt:', err.message);
+    return res.status(400).json({ error: 'Invalid encrypted payload' });
+  }
+
+  const { sso_id, responses } = decrypted;
 
   if (!sso_id || !Array.isArray(responses) || responses.length === 0) {
     return res.status(400).json({ error: 'Invalid request data' });
   }
 
+  // ✅ Extract IP address
+  const ip_address = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip;
+
   try {
-    // Check if candidate already exists, else insert
     let candidateId;
 
     const existingCandidate = await db.query(
@@ -97,19 +118,20 @@ router.post('/submit-responses', apiLogger, async (req, res) => {
       candidateId = insertCandidate.insertId;
     }
 
-    // Insert or update each response
+    // ✅ Now include ip_address in your INSERT
     for (const r of responses) {
       const { question_id, option_id, rating } = r;
 
       if (!question_id || !option_id || rating == null) continue;
 
       await db.query(
-        `INSERT INTO responses (candidate_id, question_id, option_id, rating)
-         VALUES (?, ?, ?, ?)
+        `INSERT INTO responses (candidate_id, question_id, option_id, rating, ip_address)
+         VALUES (?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE 
             option_id = VALUES(option_id), 
-            rating = VALUES(rating)`,
-        [candidateId, question_id, option_id, rating]
+            rating = VALUES(rating),
+            ip_address = VALUES(ip_address)`, // Optional: update IP if changed
+        [candidateId, question_id, option_id, rating, ip_address]
       );
     }
 
@@ -119,6 +141,7 @@ router.post('/submit-responses', apiLogger, async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 
 // Get candidate responses
@@ -171,8 +194,6 @@ router.post('/responses/fetch',apiLogger,  async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
-
 
 
 module.exports = router;

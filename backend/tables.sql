@@ -67,6 +67,8 @@ CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     phone_number VARCHAR(20) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    role_id int NOT NULL,
+    is_active int DEFAULT TRUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -2,6 +2,16 @@ const db = require('../db');
 const UAParser = require('ua-parser-js');
 const parser = new UAParser();
 
+function safeJsonTruncate(obj, limit = 3000) {
+  const full = JSON.stringify(obj);
+  if (full.length <= limit) return full;
+  return JSON.stringify({
+    truncated: true,
+    partial: full.slice(0, limit),
+    note: 'Response truncated to avoid DB overflow'
+  });
+}
+
 const apiLogger = async (req, res, next) => {
   const api_name = req.originalUrl;
   const request_body = JSON.stringify(req.body || {});
@@ -18,26 +28,39 @@ const apiLogger = async (req, res, next) => {
   const oldSend = res.send;
   let response_body = '';
 
+  
   res.send = function (data) {
     try {
-      if (Buffer.isBuffer(data)) {
-        response_body = data.toString('utf8');
-      } else if (typeof data === 'object') {
-        response_body = JSON.stringify(data);
-      } else {
-        response_body = data;
+      if (res.locals._logResponse) {
+      response_body = JSON.stringify(res.locals._logResponse);
+      
+    } else if (Buffer.isBuffer(data)) {
+      response_body = data.toString('utf8');
+    } else if (typeof data === 'object') {
+      response_body = JSON.stringify(data);
+    } else if (typeof data === 'string') {
+      try {
+        // 🧪 Attempt to parse and re-stringify if already JSON
+        const parsed = JSON.parse(data);
+        response_body = JSON.stringify(parsed);
+      } catch {
+        // 🔐 Otherwise wrap in an object to force valid JSON
+        response_body = JSON.stringify({ response: data });
       }
-
-      // Optional: Limit response length to prevent huge inserts
-      if (response_body.length > 3000) {
-        response_body = response_body.substring(0, 3000) + '... [truncated]';
-      }
-    } catch (err) {
-      response_body = '[Error serializing response]';
+      
+    } else {
+      response_body = JSON.stringify({ response: String(data) });
     }
 
-    oldSend.apply(res, arguments);
+    // Optional: Truncate to avoid huge DB inserts
+    if (response_body.length > 3000) {
+      response_body = safeJsonTruncate(res.locals._logResponse);
+    }
+  } catch (err) {
+    response_body = '[Error serializing response]';
+  }
 
+  oldSend.apply(res, arguments);
     // Async location + log
     (async () => {
       let location = '';
