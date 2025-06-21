@@ -8,9 +8,9 @@ const SECRET_KEY = process.env.SECRET_KEY
 
 router.get('/questions', async (req, res) => {
   try {
-    const [results] = await db.query('CALL GetAllQuestions()');
+    const results = await db.query('CALL GetAllQuestions()');
 
-    console.log( results , "shdgfsg");
+    
     const rows = results[0]; // MySQL wraps results from stored procedures
 
     const sectionsMap = new Map();
@@ -49,6 +49,7 @@ router.get('/questions', async (req, res) => {
       section_name: section.section_name,
       questions: Array.from(section.questionsMap.values())
     }));
+
 
     // Attach to logger
     res.locals._logResponse = plainResponse;
