@@ -6,25 +6,16 @@ const apiLogger = require("../middleware/apiLogger");
 
 const SECRET_KEY = process.env.SECRET_KEY 
 
-// GET all questions 
 router.get('/questions', async (req, res) => {
-  const query = `
-    SELECT 
-      s.id AS section_id, s.name AS section_name,
-      q.id AS question_id, q.question_text AS question_text,
-      o.id AS option_id, o.text AS option_text, o.rating
-    FROM sections s
-    JOIN questions q ON q.section_id = s.id
-    LEFT JOIN options o ON o.question_id = q.id
-    ORDER BY s.id, q.id, o.id;
-  `;
-
   try {
-    const results = await db.query(query);
+    const [results] = await db.query('CALL GetAllQuestions()');
+
+    console.log( results , "shdgfsg");
+    const rows = results[0]; // MySQL wraps results from stored procedures
 
     const sectionsMap = new Map();
 
-    results.forEach(row => {
+    rows.forEach(row => {
       if (!sectionsMap.has(row.section_id)) {
         sectionsMap.set(row.section_id, {
           section_id: row.section_id,
@@ -59,7 +50,7 @@ router.get('/questions', async (req, res) => {
       questions: Array.from(section.questionsMap.values())
     }));
 
-    // Attach original response to res.locals so logger can access it
+    // Attach to logger
     res.locals._logResponse = plainResponse;
 
     // Encrypt before sending
@@ -73,7 +64,73 @@ router.get('/questions', async (req, res) => {
 });
 
 
-// submit responses
+
+
+// router.get('/questions', async (req, res) => {
+//   const query = `
+//     SELECT 
+//       s.id AS section_id, s.name AS section_name,
+//       q.id AS question_id, q.question_text AS question_text,
+//       o.id AS option_id, o.text AS option_text, o.rating
+//     FROM sections s
+//     JOIN questions q ON q.section_id = s.id
+//     LEFT JOIN options o ON o.question_id = q.id
+//     ORDER BY s.id, q.id, o.id;
+//   `;
+
+//   try {
+//     const results = await db.query(query);
+
+
+//     const sectionsMap = new Map();
+
+//     results.forEach(row => {
+//       if (!sectionsMap.has(row.section_id)) {
+//         sectionsMap.set(row.section_id, {
+//           section_id: row.section_id,
+//           section_name: row.section_name,
+//           questionsMap: new Map()
+//         });
+//       }
+
+//       const section = sectionsMap.get(row.section_id);
+
+//       if (!section.questionsMap.has(row.question_id)) {
+//         section.questionsMap.set(row.question_id, {
+//           question_id: row.question_id,
+//           question_text: row.question_text,
+//           options: []
+//         });
+//       }
+
+//       if (row.option_id) {
+//         const question = section.questionsMap.get(row.question_id);
+//         question.options.push({
+//           option_id: row.option_id,
+//           option_text: row.option_text,
+//           rating: row.rating
+//         });
+//       }
+//     });
+
+//     const response = Array.from(sectionsMap.values()).map(section => ({
+//       section_id: section.section_id,
+//       section_name: section.section_name,
+//       questions: Array.from(section.questionsMap.values())
+//     }));
+
+//     console.log( response, "Response Data");
+
+//     const encrypted = CryptoJS.AES.encrypt(JSON.stringify(response), SECRET_KEY).toString();
+
+//     res.status(200).json({ data: encrypted });
+//   } catch (err) {
+//     console.error(`[${new Date().toISOString()}] ❌ Server Error:`, err);
+//     res.status(500).json({ error: 'Unexpected server error' });
+//   }
+// });
+
+
 
 router.post('/submit-responses', apiLogger, async (req, res) => {
  const { data } = req.body; // 🔐 encrypted data

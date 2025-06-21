@@ -226,5 +226,20 @@ router.post('/add-section', async (req, res) => {
   }
 });
 
+// router.post('/get-sections', async (req, res) => {
+//   const { data: encryptedData } = req.body;
+//   if (!encryptedData) {
+//     return res.status(400).json({ error: 'Missing encrypted payload' });
+//   }
+//   // Decrypt incoming request
+//   let sectionData;
+//   let exm_name = 
+//   try {
+//     const bytes = CryptoJS.AES.decrypt(encryptedData, SECRET_KEY);
+//     const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+//     sectionData = JSON.parse(decryptedText);
+//   }
+
+//   const 
 
 module.exports = router;
