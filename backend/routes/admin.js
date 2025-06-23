@@ -66,18 +66,21 @@ router.post("/login-admins", apiLogger, async (req, res) => {
 
 
 router.post("/get-admins", apiLogger, async (req, res) => {
-    try {
-        const query = "SELECT id, phone_number FROM users";
-        const results = await db.query(query);
-        if (results.length === 0) {
-            return res.status(404).json({ error: "No admins found" });
-        }
-        res.status(200).json({ admins: results });
-    } catch (error) {
-        console.error("Error fetching admins:", error);
-        res.status(500).json({ error: "Internal server error" });
+  try {
+    const [resultSets] = await db.query("CALL GetAllAdmins()");
+    const admins = resultSets[0];
+
+    if (!admins || admins.length === 0) {
+      return res.status(404).json({ error: "No admins found" });
     }
-})
+
+    res.status(200).json({ admins });
+  } catch (error) {
+    console.error("Error fetching admins:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 
 router.post("/delete-admin", apiLogger, async (req, res) => {
   const { adminId } = req.body;
@@ -87,22 +90,18 @@ router.post("/delete-admin", apiLogger, async (req, res) => {
   }
 
   try {
-    // Check if the admin exists
-    const existingAdmins = await db.query("SELECT * FROM users WHERE id = ?", [adminId]);
-
-    if (existingAdmins.length === 0) {
-      return res.status(404).json({ error: "Admin not found" });
-    }
-
-    // Delete the admin from the database
-    await db.query("DELETE FROM users WHERE id = ?", [adminId]);
-
+    await db.query("CALL DeleteAdmin(?)", [adminId]);
     res.status(200).json({ message: "Admin deleted successfully" });
   } catch (error) {
+    if (error.message.includes("Admin not found")) {
+      return res.status(404).json({ error: error.message });
+    }
+
     console.error("Error deleting admin:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 router.post("/update-question", apiLogger, async (req, res) => {
   const { question } = req.body;
