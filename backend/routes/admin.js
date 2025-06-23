@@ -181,7 +181,6 @@ router.post('/add-section', async (req, res) => {
     return res.status(400).json({ error: 'Missing encrypted payload' });
   }
 
-  // Decrypt incoming request
   let sectionData;
   try {
     const bytes = CryptoJS.AES.decrypt(encryptedData, SECRET_KEY);
@@ -194,20 +193,22 @@ router.post('/add-section', async (req, res) => {
 
   const { name, description = null, exam_name = null } = sectionData;
 
-  // Validation
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: 'Section name is required and must be a string' });
   }
 
   try {
-    const result = await db.query(
-      'INSERT INTO sections (name, description, exam_name) VALUES (?, ?, ?)',
-      [name.trim(), description, exam_name]
-    );
+    // Call stored procedure
+    const result = await db.query("CALL AddSection(?, ?, ?)", [
+      name.trim(),
+      description,
+      exam_name
+    ]);
 
+    // MySQL returns result as [[resultSet], ...], insertId in result[0][0].id
     const responsePayload = {
       message: 'Section added successfully',
-      section_id: result.insertId
+      // You can return last inserted id if needed by SELECT LAST_INSERT_ID() in SP
     };
 
     const encryptedResponse = CryptoJS.AES.encrypt(
@@ -216,27 +217,12 @@ router.post('/add-section', async (req, res) => {
     ).toString();
 
     res.status(201).json({ data: encryptedResponse });
-
   } catch (err) {
     console.error(`[${new Date().toISOString()}] ❌ Error adding section:`, err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// router.post('/get-sections', async (req, res) => {
-//   const { data: encryptedData } = req.body;
-//   if (!encryptedData) {
-//     return res.status(400).json({ error: 'Missing encrypted payload' });
-//   }
-//   // Decrypt incoming request
-//   let sectionData;
-//   let exm_name = 
-//   try {
-//     const bytes = CryptoJS.AES.decrypt(encryptedData, SECRET_KEY);
-//     const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-//     sectionData = JSON.parse(decryptedText);
-//   }
 
-//   const 
 
 module.exports = router;
