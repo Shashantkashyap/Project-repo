@@ -12,60 +12,58 @@ router.post("/create-admin", apiLogger, async (req, res) => {
   const { phone, password } = req.body;
 
   if (!phone || !password) {
-    return res.status(400).json({ error: "Username and password are required" });
+    return res.status(400).json({ error: "Phone and password are required" });
   }
 
   try {
-    // Check if the admin already exists
-    const existingAdmins = await db.query("SELECT * FROM users WHERE phone_number = ?", [phone]);
-
-    if (existingAdmins.length > 0) {
-      return res.status(409).json({ error: "Admin with this contact already exists" });
-    }
-
-    // Encrypt the password
+    // Encrypt password
     const encryptedPassword = CryptoJS.AES.encrypt(password, process.env.SECRET_KEY).toString();
 
-    // Insert the new admin into the database
-    await db.query("INSERT INTO users (phone_number, password) VALUES (?, ?)", [phone, encryptedPassword]);
+    // Call procedure
+    await db.query("CALL CreateAdmin(?, ?)", [phone, encryptedPassword]);
 
     res.status(201).json({ message: "Admin created successfully" });
   } catch (error) {
+    if (error.message.includes("Admin with this contact already exists")) {
+      return res.status(409).json({ error: error.message });
+    }
+
     console.error("Error creating admin:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-}
-);
+});
+
 
 router.post("/login-admins", apiLogger, async (req, res) => {
   const { phone, password } = req.body;
 
   if (!phone || !password) {
-    return res.status(400).json({ error: "Username and password are required" });
+    return res.status(400).json({ error: "Phone and password are required" });
   }
 
   try {
-    const query = "SELECT * FROM users WHERE phone_number = ?";
-    const results = await db.query(query, [phone]);
+    const [resultSets] = await db.query("CALL LoginAdmin(?)", [phone]);
+    const adminResults = resultSets[0];
 
-    if (results.length === 0) {
-      return res.status(401).json({ error: "Invalid username or password" });
+    if (!adminResults || adminResults.length === 0) {
+      return res.status(401).json({ error: "Invalid phone or password" });
     }
 
-    const admin = results[0];
+    const admin = adminResults[0];
+
     const decryptedPassword = CryptoJS.AES.decrypt(admin.password, process.env.SECRET_KEY).toString(CryptoJS.enc.Utf8);
 
     if (decryptedPassword !== password) {
-      return res.status(401).json({ error: "Invalid username or password" });
+      return res.status(401).json({ error: "Invalid phone or password" });
     }
 
-    // Successful login
-    res.status(200).json({success: true , message: "Login successful", adminId: admin.id });
+    res.status(200).json({ success: true, message: "Login successful", adminId: admin.id });
   } catch (error) {
     console.error("Error during admin login:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 router.post("/get-admins", apiLogger, async (req, res) => {
     try {

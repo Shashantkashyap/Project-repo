@@ -134,7 +134,8 @@ router.get('/questions', async (req, res) => {
 
 
 router.post('/submit-responses', apiLogger, async (req, res) => {
- const { data } = req.body; // 🔐 encrypted data
+  const { data } = req.body;
+
 
   if (!data) {
     return res.status(400).json({ error: 'Missing encrypted payload' });
@@ -143,117 +144,158 @@ router.post('/submit-responses', apiLogger, async (req, res) => {
   let decrypted;
   try {
     const bytes = CryptoJS.AES.decrypt(data, SECRET_KEY);
-    decrypted = JSON.parse(bytes.toString(CryptoJS.enc.Utf8)); // 🔓 now a JS object
+    decrypted = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
   } catch (err) {
     console.error('❌ Failed to decrypt:', err.message);
     return res.status(400).json({ error: 'Invalid encrypted payload' });
   }
 
-  const { sso_id, responses } = decrypted;
 
-  if (!sso_id || !Array.isArray(responses) || responses.length === 0) {
+  const { roll_no, responses } = decrypted;
+
+  if (!roll_no || !Array.isArray(responses) || responses.length === 0) {
     return res.status(400).json({ error: 'Invalid request data' });
   }
 
-  // ✅ Extract IP address
   const ip_address = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip;
 
   try {
-    let candidateId;
-
-    const existingCandidate = await db.query(
-      'SELECT id FROM candidates WHERE sso_id = ?',
-      [sso_id]
-    );
-
-    if (existingCandidate.length > 0) {
-      candidateId = existingCandidate[0].id;
-    } else {
-      const insertCandidate = await db.query(
-        'INSERT INTO candidates (sso_id) VALUES (?)',
-        [sso_id]
-      );
-      candidateId = insertCandidate.insertId;
-    }
-
-    // ✅ Now include ip_address in your INSERT
+    // You can optionally check if the candidate exists here,
+    // or rely on the procedure to throw an error
     for (const r of responses) {
       const { question_id, option_id, rating } = r;
 
-      if (!question_id || !option_id || rating == null) continue;
+      if (
+        typeof question_id !== 'number' ||
+        typeof option_id !== 'number' ||
+        typeof rating !== 'number'
+      ) continue;
 
-      await db.query(
-        `INSERT INTO responses (candidate_id, question_id, option_id, rating, ip_address)
-         VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE 
-            option_id = VALUES(option_id), 
-            rating = VALUES(rating),
-            ip_address = VALUES(ip_address)`, // Optional: update IP if changed
-        [candidateId, question_id, option_id, rating, ip_address]
-      );
+      await db.query('CALL SubmitResponse(?, ?, ?, ?, ?)', [
+        roll_no,
+        question_id,
+        option_id,
+        rating,
+        ip_address
+      ]);
     }
 
     res.status(200).json({ message: 'Responses submitted successfully' });
   } catch (err) {
     console.error(`[${new Date().toISOString()}] ❌ Error saving responses:`, err);
-    res.status(500).json({ error: 'Internal server error' });
+    const message = err?.sqlMessage || err.message;
+    res.status(500).json({ error: message.includes('Candidate not found') ? 'Candidate not found' : 'Internal server error' });
   }
 });
 
 
 
 // Get candidate responses
-router.post('/responses/fetch',apiLogger,  async (req, res) => {
-  const { sso_id } = req.body;
+// router.post('/responses/fetch',apiLogger,  async (req, res) => {
+//   const { roll_no } = req.body;
 
-  if (!sso_id) {
-    return res.status(400).json({ error: 'SSO ID is required' });
+//   if (!roll_no) {
+//     return res.status(400).json({ error: 'SSO ID is required' });
+//   }
+
+//   try {
+//     // Check if candidate exists
+//     const [candidates] = await db.query(
+//       'SELECT id FROM candidates WHERE roll_no = ?',
+//       [roll_no]
+//     );
+
+//     if (candidates.length === 0) {
+//       return res.status(404).json({ error: 'Candidate not found' });
+//     }
+
+
+//     const candidateId = candidates.id;
+
+//     // Fetch detailed responses
+//     const responses = await db.query(`
+//       SELECT 
+//         r.question_id,
+//         q.text AS question_text,
+//         o.text AS option_text,
+//         r.rating
+//       FROM responses r
+//       JOIN questions q ON r.question_id = q.id
+//       LEFT JOIN options o ON r.option_id = o.id
+//       WHERE r.candidate_id = ?
+//       ORDER BY r.question_id;
+//     `, [candidateId]);
+
+//     if (responses.length === 0) {
+//       return res.status(404).json({ error: 'No responses found for this candidate' });
+//     }
+
+    
+//     const encrypted = CryptoJS.AES.encrypt(JSON.stringify(responses), SECRET_KEY).toString();
+
+
+//     res.status(200).json({message: "Data fetched successfully" ,sso_id, encrypted });
+//   } catch (err) {
+//     console.error(`[${new Date().toISOString()}] ❌ Error fetching responses:`, err);
+//     res.status(500).json({ error: 'Internal server error' });
+//   }
+// });
+
+
+router.post('/responses/fetch', apiLogger, async (req, res) => {
+  const { roll_no } = req.body;
+
+  if (!roll_no) {
+    return res.status(400).json({ error: 'Roll number is required' });
   }
 
   try {
-    // Check if candidate exists
-    const [candidates] = await db.query(
-      'SELECT id FROM candidates WHERE sso_id = ?',
-      [sso_id]
-    );
+    // Call stored procedure using roll_no
+    const [responses] = await db.query('CALL FetchCandidateResponsesByRollNo(?)', [roll_no]);
 
-    if (candidates.length === 0) {
-      return res.status(404).json({ error: 'Candidate not found' });
-    }
-
-
-    const candidateId = candidates.id;
-
-    // Fetch detailed responses
-    const responses = await db.query(`
-      SELECT 
-        r.question_id,
-        q.text AS question_text,
-        o.text AS option_text,
-        r.rating
-      FROM responses r
-      JOIN questions q ON r.question_id = q.id
-      LEFT JOIN options o ON r.option_id = o.id
-      WHERE r.candidate_id = ?
-      ORDER BY r.question_id;
-    `, [candidateId]);
-
-    if (responses.length === 0) {
+    if (!responses || responses.length === 0 || responses[0].length === 0) {
       return res.status(404).json({ error: 'No responses found for this candidate' });
     }
 
-    
-    const encrypted = CryptoJS.AES.encrypt(JSON.stringify(responses), SECRET_KEY).toString();
+    const encrypted = CryptoJS.AES.encrypt(JSON.stringify(responses[0]), SECRET_KEY).toString();
 
+    res.status(200).json({ message: "Data fetched successfully", roll_no, encrypted });
 
-    res.status(200).json({message: "Data fetched successfully" ,sso_id, encrypted });
   } catch (err) {
     console.error(`[${new Date().toISOString()}] ❌ Error fetching responses:`, err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
+router.post('/encrypted-data', async (req, res) => {
+  const data =  {
+    "roll_no": "CS2023001",
+    "responses": [
+      {
+        "question_id": 1,
+        "option_id": 2,
+        "rating": 4
+      },
+      {
+        "question_id": 2,
+        "option_id": 3,
+        "rating": 5
+      }
+    ]
+  }
 
+  if (!data || typeof data !== 'object') {
+    return res.status(400).json({ error: 'Invalid or missing JSON object to encrypt' });
+  }
+
+  try {
+    const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), SECRET_KEY).toString();
+    res.status(200).json({ data: encrypted });
+  } catch (err) {
+    console.error('❌ Error encrypting data:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 
 module.exports = router;

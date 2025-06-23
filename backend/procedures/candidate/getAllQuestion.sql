@@ -2,34 +2,14 @@ DELIMITER $$
 
 CREATE PROCEDURE GetAllQuestions()
 BEGIN
-  SELECT JSON_ARRAYAGG(
-    JSON_OBJECT(
-        'section_id', s.id,
-        'section_name', s.name,
-        'questions', (
-            SELECT JSON_ARRAYAGG(
-                JSON_OBJECT(
-                    'question_id', q.id,
-                    'question_text', q.question_text,
-                    'options', (
-                        SELECT JSON_ARRAYAGG(
-                            JSON_OBJECT(
-                                'option_id', o.id,
-                                'option_text', o.text,
-                                'rating', o.rating
-                            )
-                        )
-                        FROM options o
-                        WHERE o.question_id = q.id
-                    )
-                )
-            )
-            FROM questions q
-            WHERE q.section_id = s.id
-        )
-    )
-) AS result
-FROM sections s;
+  SELECT 
+    s.id AS section_id, s.name AS section_name,
+    q.id AS question_id, q.question_text AS question_text,
+    o.id AS option_id, o.text AS option_text, o.rating
+  FROM sections s
+  JOIN questions q ON q.section_id = s.id
+  LEFT JOIN options o ON o.question_id = q.id
+  ORDER BY s.id, q.id, o.id;
 END $$
 
 DELIMITER ;
