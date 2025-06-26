@@ -4,11 +4,14 @@ use information_form;
 
 -- create tables 
 
-create table candidates ( 
-id INT auto_increment primary key ,
-sso_id varchar(100) not null unique,
-roll_no VARCHAR(50),
-created_at datetime default current_timestamp ) ;
+CREATE TABLE candidates (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sso_id VARCHAR(100) NOT NULL UNIQUE,
+    roll_no VARCHAR(50),
+    exam_name VARCHAR(255) DEFAULT NULL,
+    candidate_name VARCHAR(255) DEFAULT 'Unknown',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
 -- create section 
 
@@ -165,12 +168,13 @@ INSERT INTO options (question_id, text, rating) VALUES
 
 -- Q9
 INSERT INTO questions (text, section_id) VALUES (
-  'If you're configuring servers and deploying applications on AWS or Azure, you are working in:', 2);
+  'If you are configuring servers and deploying applications on AWS or Azure, you are working in:', 2);
 INSERT INTO options (question_id, text, rating) VALUES
   (LAST_INSERT_ID(), 'Cybersecurity', 2),
   (LAST_INSERT_ID(), 'Data Science', 3),
   (LAST_INSERT_ID(), 'Cloud Computing', 5),
   (LAST_INSERT_ID(), 'Operating Systems', 1);
+  
 
 -- Q10
 INSERT INTO questions (text, section_id) VALUES (

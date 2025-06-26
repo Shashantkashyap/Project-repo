@@ -16,7 +16,7 @@ BEGIN
     -- Fetch candidate responses
     SELECT 
       r.question_id,
-      q.text AS question_text,
+      q.question_text AS question_text,
       o.text AS option_text,
       r.rating
     FROM responses r

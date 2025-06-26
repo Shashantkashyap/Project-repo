@@ -49,7 +49,8 @@ router.post("/login-admins", apiLogger, async (req, res) => {
       return res.status(401).json({ error: "Invalid phone or password" });
     }
 
-    const admin = adminResults[0];
+
+    const admin = adminResults;
 
     const decryptedPassword = CryptoJS.AES.decrypt(admin.password, process.env.SECRET_KEY).toString(CryptoJS.enc.Utf8);
 
@@ -68,7 +69,7 @@ router.post("/login-admins", apiLogger, async (req, res) => {
 router.post("/get-admins", apiLogger, async (req, res) => {
   try {
     const [resultSets] = await db.query("CALL GetAllAdmins()");
-    const admins = resultSets[0];
+    const admins = resultSets;
 
     if (!admins || admins.length === 0) {
       return res.status(404).json({ error: "No admins found" });
@@ -120,7 +121,7 @@ router.post("/update-question", apiLogger, async (req, res) => {
   try {
     // 1. Update the question text
     await db.query(
-      `UPDATE questions SET text = ? WHERE id = ?`,
+      `UPDATE questions SET question_text = ? WHERE id = ?`,
       [question_text, question_id]
     );
 
@@ -173,6 +174,77 @@ if (toDelete.length > 0) {
 });
 
 
+router.post('/add-question', apiLogger, async (req, res) => {
+  const { question } = req.body;
+
+  if (
+    !question ||
+    !question.section_id ||
+    !question.question_text ||
+    !Array.isArray(question.options)
+  ) {
+    return res.status(400).json({
+      error: 'Invalid request: section_id, question_text, and options are required',
+    });
+  }
+
+  const { section_id, question_text, options } = question;
+
+  try {
+    // Call the stored procedure
+    await db.query('CALL AddQuestionToSection(?, ?, ?)', [
+      section_id,
+      question_text,
+      JSON.stringify(options),
+    ]);
+
+    res.status(201).json({
+      message: 'Question and options added successfully',
+    });
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] ❌ Error adding question to section:`, err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+router.post('/delete-question', apiLogger, async (req, res) => {
+  const { questionId } = req.body;
+
+  if (!questionId) {
+    return res.status(400).json({ error: 'Question ID is required' });
+  }
+
+  const conn = await db.getConnection(); // assuming db pool supports getConnection()
+  await conn.beginTransaction();
+
+  try {
+    // Optional: check if question exists
+    const [question] = await conn.query('SELECT id FROM questions WHERE id = ?', [questionId]);
+    if (question.length === 0) {
+      await conn.release();
+      return res.status(404).json({ error: 'Question not found' });
+    }
+
+    // Delete options
+    await conn.query(`DELETE FROM options WHERE question_id = ?`, [questionId]);
+
+    // Delete question
+    await conn.query(`DELETE FROM questions WHERE id = ?`, [questionId]);
+
+    await conn.commit();
+    conn.release();
+
+    res.status(200).json({ message: 'Question and its options deleted successfully' });
+  } catch (err) {
+    await conn.rollback();
+    conn.release();
+    console.error(`[${new Date().toISOString()}] ❌ Error deleting question:`, err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
 // Add new section
 router.post('/add-section', async (req, res) => {
   const { data: encryptedData } = req.body;
@@ -205,24 +277,79 @@ router.post('/add-section', async (req, res) => {
       exam_name
     ]);
 
-    // MySQL returns result as [[resultSet], ...], insertId in result[0][0].id
-    const responsePayload = {
+    return res.status(201).json({
       message: 'Section added successfully',
-      // You can return last inserted id if needed by SELECT LAST_INSERT_ID() in SP
-    };
+      
+    });
 
-    const encryptedResponse = CryptoJS.AES.encrypt(
-      JSON.stringify(responsePayload),
-      SECRET_KEY
-    ).toString();
-
-    res.status(201).json({ data: encryptedResponse });
   } catch (err) {
     console.error(`[${new Date().toISOString()}] ❌ Error adding section:`, err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
+router.post("/get-sections", async (req, res) => {
+  try {
+    const section = await db.query("Select * from sections");
+
+    
+
+    res.status(200).json({ sections: section });
+  } catch (error) {
+    console.error("Error fetching sections:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get('/get-exam-names', async (req, res) => {
+  try {
+    const [rows] = await db.query("CALL GetExamNames();");
+
+    if (!rows || rows[0].length === 0) {
+      return res.status(404).json({ error: "No exam names found" });
+    }
+
+    res.status(200).json({ examNames: rows });
+  } catch (error) {
+    console.error("Error fetching exam names:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+router.post("/get-submissions", async (req, res) => {
+
+  const {roll_no , exam_name} = req.body;
+
+  if (!roll_no || !exam_name) {
+    return res.status(400).json({ error: "Roll number and exam name are required" });
+  }
+
+  try {
+   
+    const candidate = await db.query("Select * from candidates where roll_no = ? and exam_name = ?", [roll_no, exam_name]);
+
+    if (!candidate || candidate.length === 0) {
+      return res.status(404).json({ error: "Candidate not found" });
+    }
+
+    const [responses] = await db.query('CALL FetchCandidateResponsesByRollNo(?)', [roll_no]);
+    if (!responses || responses.length === 0) {
+      return res.status(404).json({ error: 'No responses found for this candidate' });
+    }
+
+    return res.status(200).json({ message: "Data fetched successfully", candidate, responses });
+
+    // const encrypted = CryptoJS.AES.encrypt(JSON.stringify(responses[0]), SECRET_KEY).toString();
+
+    // res.status(200).json({ message: "Data fetched successfully", roll_no, encrypted });
+
+  } catch (error) {
+    console.error("Error fetching submissions:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+
+})
 
 
 module.exports = router;
