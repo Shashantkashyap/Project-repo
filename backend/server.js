@@ -11,7 +11,7 @@ const adminRoutes = require('./routes/admin'); // Uncomment if admin routes are 
 
 const app = express();
 app.use(cors({
-    origin: process.env.ORIGIN || 'http://localhost:3000', // Adjust as needed
+    origin: ['http://localhost:3000', 'http://13.201.44.91'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
