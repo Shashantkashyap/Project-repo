@@ -297,6 +297,13 @@ router.post('/encrypted-data', async (req, res) => {
   }
 });
 
+router.post("/fetch-roll-no" , async(req , res)=>{
+  return res.status(200).json({
+    success : true ,
+    roll_no : "12345"
+  })
+})
+
 
 module.exports = router;
 
