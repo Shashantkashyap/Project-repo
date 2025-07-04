@@ -14,13 +14,9 @@ const AdminLayout = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/');
-    } catch (error) {
-      console.error('Failed to log out', error);
-    }
+  const handleLogout = () => {
+    logout();
+    navigate('/');
   };
 
   return (
@@ -130,6 +126,7 @@ const AdminLayout = () => {
     </div>
   );
 };
+
 
 
 export default AdminLayout;

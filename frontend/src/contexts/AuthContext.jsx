@@ -18,6 +18,7 @@ export function AuthProvider({ children }) {
       const storedAuth = localStorage.getItem('isAuthenticated');
       const storedToken = localStorage.getItem('adminToken');
       const storedUser = localStorage.getItem('adminUser');
+      const loginTime = localStorage.getItem('admin_login_time');
       
       if (storedAuth === 'true' && storedToken) {
         setIsAuthenticated(true);
@@ -26,6 +27,21 @@ export function AuthProvider({ children }) {
             setAdminUser(JSON.parse(storedUser));
           } catch (e) {
             console.error('Error parsing stored user data', e);
+          }
+        }
+      } else {
+        // Check for persisted admin login
+        const token = localStorage.getItem('admin_token');
+        if (token && loginTime) {
+          const now = Date.now();
+          // If login time is within 24 hours
+          if (now - Number(loginTime) < 24 * 60 * 60 * 1000) {
+            setIsAuthenticated(true);
+          } else {
+            // Expired
+            localStorage.removeItem('admin_token');
+            localStorage.removeItem('admin_login_time');
+            setIsAuthenticated(false);
           }
         }
       }
@@ -75,6 +91,8 @@ export function AuthProvider({ children }) {
         // Store authentication state in localStorage
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('adminToken', token);
+        localStorage.setItem('admin_token', 'some_flag');
+        localStorage.setItem('admin_login_time', Date.now().toString());
         if (userData) {
           localStorage.setItem('adminUser', JSON.stringify(userData));
           setAdminUser(userData);
@@ -119,6 +137,8 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminUser');
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_login_time');
       
       // Update state
       setIsAuthenticated(false);
