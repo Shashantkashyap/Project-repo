@@ -38,12 +38,16 @@ function App() {
           {/* Always show ValidationComponent at root */}
           <Route path="/" element={<ValidationComponent />} />
 
-          {/* Assessment page after validation */}
+          {/* Assessment page after validation only */}
           <Route path="/assessment" element={
-            <>
-              <Navbar />
-              <Assessment />
-            </>
+            localStorage.getItem("roll_no") ? (
+              <>
+                <Navbar />
+                <Assessment />
+              </>
+            ) : (
+              <Navigate to="/" replace />
+            )
           } />
 
           <Route path="/admin-login" element={<Login />} />
