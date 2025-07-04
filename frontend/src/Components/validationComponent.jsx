@@ -12,7 +12,7 @@ function ValidationComponent() {
     if (rollNo) {
       // Already validated, skip API call
       setLoading(false);
-      navigate("/");
+      navigate("/assessment");
       return;
     }
 
@@ -23,10 +23,12 @@ function ValidationComponent() {
         const res = await axios.post(
           `${import.meta.env.VITE_API_BASE_URL}/candidate/fetch-roll-no`
         );
+
+        console.log(res)
         if (res.data && res.data.success && res.data.roll_no) {
           localStorage.setItem("roll_no", res.data.roll_no);
           setLoading(false);
-          navigate("/");
+          navigate("/assessment");
         } else {
           throw new Error("Invalid response from server");
         }
