@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Assessment from './pages/Assessment';
 import Login from './pages/Login';
-import Navbar from './components/Navbar';
+import Navbar from './Components/Navbar';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Admin components
-import AdminLayout from './components/AdminLayout';
+import AdminLayout from './Components/AdminLayout';
 import DashboardHome from './pages/DashboardHome';
 import SubmissionsPage from './pages/SubmissionsPage';
 import QuestionsPage from './pages/QuestionsPage';

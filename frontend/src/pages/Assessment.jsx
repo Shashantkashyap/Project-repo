@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-import SectionContainer from "../components/SectionContainer";
+import SectionContainer from "../Components/SectionContainer";
 import { decryptData } from "../utils/decryptionHelper";
 import { encryptSectionData } from "../utils/encryptHelper";
 
