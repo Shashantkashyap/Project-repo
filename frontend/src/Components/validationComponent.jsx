@@ -1,18 +1,23 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
 function ValidationComponent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const hasNavigated = useRef(false);
 
   useEffect(() => {
     const rollNo = localStorage.getItem("roll_no");
-    if (rollNo) {
-      // Already validated, skip API call
+    if (rollNo && location.pathname !== "/assessment" && !hasNavigated.current) {
+      hasNavigated.current = true;
       setLoading(false);
-      navigate("/assessment");
+      // Delay navigation to avoid browser throttling/hang
+      setTimeout(() => {
+        navigate("/assessment");
+      }, 1000);
       return;
     }
 
@@ -28,7 +33,13 @@ function ValidationComponent() {
         if (res.data && res.data.success && res.data.roll_no) {
           localStorage.setItem("roll_no", res.data.roll_no);
           setLoading(false);
-          navigate("/assessment");
+          if (location.pathname !== "/assessment" && !hasNavigated.current) {
+            hasNavigated.current = true;
+            // Delay navigation to avoid browser throttling/hang
+            setTimeout(() => {
+              navigate("/assessment");
+            }, 50);
+          }
         } else {
           throw new Error("Invalid response from server");
         }
@@ -38,8 +49,8 @@ function ValidationComponent() {
       }
     };
 
-    fetchRollNo();
-  }, [navigate]);
+    if (!rollNo) fetchRollNo();
+  }, [navigate, location]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">

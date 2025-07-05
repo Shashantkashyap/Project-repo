@@ -30,6 +30,33 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+function ProtectedAssessment() {
+  const [allowed, setAllowed] = React.useState(null);
+
+  React.useEffect(() => {
+    if (localStorage.getItem("roll_no")) {
+      setAllowed(true);
+    } else {
+      setAllowed(false);
+    }
+  }, []);
+
+  if (allowed === null) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+  if (!allowed) {
+    // Optionally show a message or redirect UI, but do NOT navigate
+    return <div className="flex items-center justify-center h-screen">Not authorized. Please start from the home page.</div>;
+  }
+
+  return (
+    <>
+      <Navbar />
+      <Assessment />
+    </>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -39,16 +66,7 @@ function App() {
           <Route path="/" element={<ValidationComponent />} />
 
           {/* Assessment page after validation only */}
-          <Route path="/assessment" element={
-            localStorage.getItem("roll_no") ? (
-              <>
-                <Navbar />
-                <Assessment />
-              </>
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } />
+          <Route path="/assessment" element={<ProtectedAssessment />} />
 
           <Route path="/admin-login" element={<Login />} />
 
