@@ -10,47 +10,42 @@ function ValidationComponent() {
   const hasNavigated = useRef(false);
 
   useEffect(() => {
-    const rollNo = localStorage.getItem("roll_no");
-    if (rollNo && location.pathname !== "/assessment" && !hasNavigated.current) {
+  const rollNo = localStorage.getItem("roll_no");
+
+  const redirectToAssessment = () => {
+    if (!hasNavigated.current && location.pathname !== "/assessment") {
       hasNavigated.current = true;
-      setLoading(false);
-      // Delay navigation to avoid browser throttling/hang
-      setTimeout(() => {
-        navigate("/assessment");
-      }, 1000);
-      return;
+      navigate("/assessment");
     }
+  };
 
-    const fetchRollNo = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL}/candidate/fetch-roll-no`
-        );
+  const fetchRollNo = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/candidate/fetch-roll-no`
+      );
 
-       
-        if (res.data && res.data.success && res.data.roll_no) {
-          localStorage.setItem("roll_no", res.data.roll_no);
-          setLoading(false);
-          if (location.pathname !== "/assessment" && !hasNavigated.current) {
-            hasNavigated.current = true;
-            // Delay navigation to avoid browser throttling/hang
-            setTimeout(() => {
-              navigate("/assessment");
-            }, 2000);
-          }
-        } else {
-          throw new Error("Invalid response from server");
-        }
-      } catch (err) {
-        setError("Failed to validate. Please try again.");
-        setLoading(false);
+      if (res.data?.success && res.data.roll_no) {
+        localStorage.setItem("roll_no", res.data.roll_no);
+        redirectToAssessment();
+      } else {
+        throw new Error("Invalid response from server");
       }
-    };
+    } catch (err) {
+      setError("Failed to validate. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    if (!rollNo) fetchRollNo();
-  }, [navigate, location]);
+  if (rollNo) {
+    redirectToAssessment();
+  } else {
+    fetchRollNo();
+  }
+}, [navigate, location.pathname]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
