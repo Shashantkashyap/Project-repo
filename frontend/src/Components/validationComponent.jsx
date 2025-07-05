@@ -29,7 +29,7 @@ function ValidationComponent() {
           `${import.meta.env.VITE_API_BASE_URL}/candidate/fetch-roll-no`
         );
 
-        console.log(res)
+       
         if (res.data && res.data.success && res.data.roll_no) {
           localStorage.setItem("roll_no", res.data.roll_no);
           setLoading(false);
@@ -38,7 +38,7 @@ function ValidationComponent() {
             // Delay navigation to avoid browser throttling/hang
             setTimeout(() => {
               navigate("/assessment");
-            }, 50);
+            }, 2000);
           }
         } else {
           throw new Error("Invalid response from server");
