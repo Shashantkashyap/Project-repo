@@ -361,9 +361,9 @@ const candidate_id = candidates[0].id;
 
 const existingResponses = await db.query(`SELECT * FROM responses WHERE candidate_id = ?`, [candidate_id]);
 
-// if (existingResponses.length > 0) {
-//    return res.redirect("http://13.201.44.91//error?reason=User already submit the form");
-// }
+if (existingResponses.length > 0) {
+   return res.redirect("http://13.201.44.91//error?reason=User already submit the form");
+}
 
    
     const payloadData = {
