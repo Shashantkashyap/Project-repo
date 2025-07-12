@@ -21,11 +21,12 @@ app.use(cookieParser());
 
 app.use(cors({
     origin: ['http://localhost:3000', 'http://13.201.44.91' , "http://localhost:5173"],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true // Allow cookies to be sent with requests
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Set-Cookie"],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+  maxAge: 86400, // 24 hours
 }));
-app.use(express.json());
 
 app.use(helmet()); // Adds X-Frame-Options: DENY and more
 app.use((req, res, next) => {

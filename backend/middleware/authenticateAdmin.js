@@ -7,6 +7,7 @@ function authenticateAdmin(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log(decoded, "decoded token in authenticateAdmin middleware");
     req.adminId = decoded.adminId;
     next();
   } catch (err) {
