@@ -14,7 +14,7 @@
     "axios": "^1.10.0",
     "crypto-js": "^4.2.0",
     "express": "^5.1.0",
-    "framer-motion": "^12.19.1",
+    "motion": "^12.23.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hot-toast": "^2.5.2",
