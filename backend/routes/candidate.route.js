@@ -176,7 +176,7 @@ router.post('/submit-responses', apiLogger, async (req, res) => {
     });
 
     const validation = await axios.post(
-      'http://10.70.231.137/ia24/TokenValidationService.asmx/ValidateUser',
+      `http://${process.env.Validation_IP}/ia24/TokenValidationService.asmx/ValidateUser`,
       formBody,
       {
         headers: {
@@ -316,11 +316,10 @@ router.post("/fetch-roll-no" , async(req , res)=>{
 
 
 // AES key and IV
-const key = '302015doit&C978590$2025postingom';
-const iv = 'doitexm978590740';
+
 
 const decryptAES = (encrypted) => {
-  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(key, 'utf-8'), Buffer.from(iv, 'utf-8'));
+  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(process.env.AES_key, 'utf-8'), Buffer.from(process.env.AES_iv, 'utf-8'));
   let decrypted = decipher.update(encrypted, 'base64', 'utf-8');
   decrypted += decipher.final('utf-8');
   return decrypted;
