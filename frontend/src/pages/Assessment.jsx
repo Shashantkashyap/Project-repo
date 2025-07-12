@@ -202,7 +202,7 @@ function Assessment() {
   useEffect(() => {
     if (isSubmitted) {
       if (countdown === 0) {
-        window.location.href = "http://10.70.230.201/ia24/Default.aspx";
+        window.location.href = `http://${import.meta.env.VITE_API_BASE_URL}/ia24/Default.aspx`;
         return;
       }
       const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
