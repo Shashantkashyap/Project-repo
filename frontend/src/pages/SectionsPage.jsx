@@ -4,7 +4,7 @@ import { MdWarning } from "react-icons/md";
 import { toast } from "react-hot-toast";
 import axios from "axios";
 import CryptoJS from "crypto-js";
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import "../axiosInterceptor";
 
 // --- Add Section Modal (Exact replica from QuestionsPage) ---

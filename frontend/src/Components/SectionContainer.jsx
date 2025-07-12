@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from "motion/react"
 import McqQuestion from './McqQuestion';
 
 const SectionContainer = ({ section, onAnswerSelect, selectedOptions }) => {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import toast, { Toaster } from 'react-hot-toast';
 import { FiUser, FiUserPlus, FiEdit2, FiTrash2, FiX, FiCheck, FiPhone, FiLock, FiUsers } from 'react-icons/fi';
 import { MdWarning } from 'react-icons/md';

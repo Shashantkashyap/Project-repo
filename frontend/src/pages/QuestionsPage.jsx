@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { decryptData } from '../utils/decryptionHelper';
 import { updateQuestion } from '../api/questions';
 import toast, { Toaster } from 'react-hot-toast';
 import CryptoJS from 'crypto-js';
-import { section } from 'framer-motion/client';
 import "../axiosInterceptor";
 
 

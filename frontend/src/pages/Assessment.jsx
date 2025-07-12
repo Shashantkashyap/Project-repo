@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import axios from "axios";
 import SectionContainer from "../Components/SectionContainer";
 import { decryptData } from "../utils/decryptionHelper";
