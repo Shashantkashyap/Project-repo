@@ -51,31 +51,81 @@ export function AuthProvider({ children }) {
     checkAuth();
   }, []);
   
+  // Safe encryption function
+  const safeEncrypt = (data, secretKey) => {
+    try {
+      // Validate inputs
+      if (!data || !secretKey) {
+        throw new Error('Invalid data or secret key for encryption');
+      }
+      
+      // Ensure data is a string
+      const dataString = typeof data === 'string' ? data : JSON.stringify(data);
+      
+      // Validate secret key
+      if (typeof secretKey !== 'string' || secretKey.length === 0) {
+        throw new Error('Invalid secret key');
+      }
+      
+      // Perform encryption
+      const encrypted = CryptoJS.AES.encrypt(dataString, secretKey);
+      return encrypted.toString();
+    } catch (error) {
+      console.error('Encryption error:', error);
+      throw new Error('Failed to encrypt data: ' + error.message);
+    }
+  };
+  
   // Login function - use the API login endpoint with phone number
   const login = async (phoneNumber, password) => {
     try {
       setLoading(true);
 
-      const encryptedData = CryptoJS.AES.encrypt(
-        JSON.stringify({ phone: phoneNumber, password }),
-        import.meta.env.VITE_SECRET_KEY
-      ).toString();
+      // Validate inputs
+      if (!phoneNumber || !password) {
+        throw new Error('Phone number and password are required');
+      }
+
+      // Get secret key with fallback
+      const secretKey = import.meta.env.VITE_SECRET_KEY;
+      if (!secretKey) {
+        throw new Error('Secret key not configured');
+      }
+
+      // Prepare data for encryption
+      const loginData = { phone: phoneNumber, password };
       
+      // Safe encryption
+      let encryptedData;
+      try {
+        encryptedData = safeEncrypt(loginData, secretKey);
+      } catch (encryptError) {
+        console.error('Encryption failed:', encryptError);
+        throw new Error('Failed to encrypt login data');
+      }
       
       // Call the login API with phone number
       const response = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/admin/login-admins`,
-        { data: encryptedData }, // Changed from email to phone
+        { data: encryptedData },
         {
           headers: {
             'Content-Type': 'application/json'
           },
-          withCredentials: true // Ensure cookies are sent with the request
-          
+          withCredentials: true,
+          timeout: 10000 // 10 second timeout
         }
       ).catch(error => {
         console.error('Login API error:', error.response || error);
-        throw new Error('Login failed. Please check your credentials.');
+        if (error.response?.status === 401) {
+          throw new Error('Invalid credentials');
+        } else if (error.response?.status === 404) {
+          throw new Error('Login service not found');
+        } else if (error.code === 'ECONNABORTED') {
+          throw new Error('Request timeout. Please try again.');
+        } else {
+          throw new Error('Login failed. Please check your credentials.');
+        }
       });
       
       if (response.data && response.data.success) {
@@ -88,11 +138,12 @@ export function AuthProvider({ children }) {
           try {
             userData = decryptData(
               response.data.data,
-              import.meta.env.VITE_SECRET_KEY
+              secretKey
             );
             console.log('User data decrypted successfully');
           } catch (decryptError) {
             console.error('Error decrypting user data:', decryptError);
+            // Don't throw error here, continue with login
           }
         }
         

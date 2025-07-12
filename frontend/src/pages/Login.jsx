@@ -34,8 +34,16 @@ function Login() {
       await login(phoneNumber, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message || 'Failed to sign in. Please check your credentials.');
       console.error('Login error:', err);
+      
+      // Enhanced error handling for crypto-related issues
+      if (err.message && err.message.includes('words')) {
+        setError('Authentication system error. Please try again or contact support.');
+      } else if (err.message && err.message.includes('encrypt')) {
+        setError('Security system error. Please try again.');
+      } else {
+        setError(err.message || 'Failed to sign in. Please check your credentials.');
+      }
     } finally {
       setLoading(false);
     }
@@ -46,6 +54,7 @@ function Login() {
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
         className="bg-white p-8 rounded-xl shadow-md w-full max-w-md"
       >
         <div className="text-center mb-6">
