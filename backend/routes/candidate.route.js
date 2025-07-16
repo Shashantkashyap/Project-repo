@@ -405,4 +405,28 @@ return res.redirect(`http://localhost:5173?token=${safePayload}`);
 });
 
 
+router.post ("login-test-candidates", async (req, res) => {
+  const { sso_id, password } = req.body;
+
+  if (!sso_id || !password) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  if(password !== "test1234") {
+    return res.status(400).json({ error: "Invalid password" });
+  }
+
+  try {
+        const candidate = await db.query(`SELECT * FROM candidates WHERE sso_id = ?`, [sso_id]);
+    if (!candidate) {
+      return res.status(404).json({ error: "Candidate not found" });
+    }
+
+    res.status(200).json({ message: "Login successful", candidate });
+  } catch (error) {
+    console.error("Error logging in test candidate:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 module.exports = router;
