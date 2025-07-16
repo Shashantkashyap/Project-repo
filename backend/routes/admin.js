@@ -450,7 +450,7 @@ router.post("/get-all-pending-submissions", authenticateAdmin, apiLogger, async 
 router.post("/get-all-completed-submissions",  apiLogger, async (req, res) => {
   const { exam_name, status = "Completed", roll_no } = req.body;
 
-  let query = `SELECT c.* , r.submitted_at as submission_date FROM candidates c left join responses r on c.id = r.candidate_id WHERE exam_name = ?`;
+  let query = `SELECT c.* FROM candidates c left join responses r on c.id = r.candidate_id WHERE exam_name = ?`;
   let params = [exam_name];
 
   if (roll_no) {
