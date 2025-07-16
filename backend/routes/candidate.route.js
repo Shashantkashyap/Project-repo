@@ -163,48 +163,47 @@ router.post('/submit-responses', apiLogger, async (req, res) => {
 
   if (!sso_id || !exam_name) {
     console.warn(`[${new Date().toISOString()}] ⚠️ Missing required fields: sso_id or exam_name`);
-    return res.status(400).json({ error: 'SSO ID and Exam Name are required' });
+    return res.status(403).json({ error: 'SSO ID and Exam Name are required' });
   }
 
   // 🔐 Step: Validate session using external API
-  // try {
-  //   console.log(`[${new Date().toISOString()}] 🔍 Validating session for SSO ID: ${sso_id}`);
+  try {
+    console.log(`[${new Date().toISOString()}] 🔍 Validating session for SSO ID: ${sso_id}`);
 
-  //   const formBody = qs.stringify({
-  //     sessionValue: session,
-  //     ssoID: sso_id
-  //   });
+    const formBody = qs.stringify({
+      sessionValue: session,
+      ssoID: sso_id
+    });
 
-  //   const validation = await axios.post(
-  //     `http://${process.env.Validation_IP}/ia24/TokenValidationService.asmx/ValidateUser`,
-  //     formBody,
-  //     {
-  //       headers: {
-  //         'Content-Type': 'application/x-www-form-urlencoded',
-  //       },
-  //     }
-  //   );
+    const validation = await axios.post(
+      `http://${process.env.Validation_IP}/ia24/TokenValidationService.asmx/ValidateUser`,
+      formBody,
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
+    );
 
-  //   const { data: validationData } = validation;
+    const { data: validationData } = validation;
 
-  //   if (validationData.status !== 200) {
-  //     console.warn(`[${new Date().toISOString()}] ❌ Session validation failed: ${validationData.message}`);
-  //     return res.redirect("http://localhost:5173/error?reason=session-validation-failed");
-  //   }
+    if (validationData.status !== 200) {
+      console.warn(`[${new Date().toISOString()}] ❌ Session validation failed: ${validationData.message}`);
+      return res.status(403).json({ error: validationData.message || 'Session validation failed'  });
+    }
 
-  //   console.log(`[${new Date().toISOString()}] ✅ Session validated successfully`);
-  // } catch (validationError) {
-  //   console.error(`[${new Date().toISOString()}] ❌ Session validation request failed:`, validationError.message);
-  //   return res.redirect("http://localhost:5173/error?reason=session-validation-error");
-  // }
+    console.log(`[${new Date().toISOString()}] ✅ Session validated successfully`);
+  } catch (validationError) {
+    console.error(`[${new Date().toISOString()}] ❌ Session validation request failed:`, validationError.message);
+    return res.status(419).json({ error: validationError.message || 'Session validation request failed' });
+  }
 
   if (!roll_no || !Array.isArray(responses) || responses.length === 0) {
     console.warn(`[${new Date().toISOString()}] ⚠️ Invalid roll_no or empty responses array`);
     return res.status(400).json({ error: 'Invalid request data' });
   }
 
-  const candidates = await db.query(`SELECT * FROM candidates WHERE roll_no = ? and exam_name = ?`, [roll_no, exam_name]);
-
+  const candidates = await db.query(`SELECT * FROM candidates WHERE roll_no = ? `, [roll_no]);
   const sso_candidate = await db.query(`SELECT * FROM candidates WHERE sso_id = ?` , [sso_id]);
 
 if (!sso_candidate || sso_candidate.length === 0) {
@@ -261,7 +260,6 @@ if (existingResponses.length > 0) {
     });
   }
 });
-
 
 
 router.post('/responses/fetch', apiLogger, async (req, res) => {
