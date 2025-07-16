@@ -450,7 +450,17 @@ router.post("/get-all-pending-submissions", authenticateAdmin, apiLogger, async 
 router.post("/get-all-completed-submissions",  apiLogger, async (req, res) => {
   const { exam_name, status = "Completed", roll_no } = req.body;
 
-  let query = `SELECT c.*  FROM candidates c  WHERE exam_name = ?`;
+  let query = `SELECT 
+    c.*, 
+    MIN(r.submitted_at) AS submission_date
+FROM 
+    candidates c
+LEFT JOIN 
+    responses r ON c.id = r.candidate_id
+WHERE 
+    exam_name = ?
+GROUP BY 
+    c.id;`;
   let params = [exam_name];
 
   if (roll_no) {
@@ -625,6 +635,31 @@ router.post("/add-section-to-new-exam" , authenticateAdmin, apiLogger, async (re
     res.status(201).json({ message: "Section added to new exam successfully" });
   } catch (error) {
     console.error("Error adding section to new exam:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+router.post ("login-test-candidates", async (req, res) => {
+  const { sso_id, password } = req.body;
+
+  if (!sso_id || !password) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  if(password !== "test1234") {
+    return res.status(400).json({ error: "Invalid password" });
+  }
+
+  try {
+        const candidate = await db.query(`SELECT * FROM candidates WHERE sso_id = ?`, [sso_id]);
+    if (!candidate) {
+      return res.status(404).json({ error: "Candidate not found" });
+    }
+
+    res.status(200).json({ message: "Login successful", candidate });
+  } catch (error) {
+    console.error("Error logging in test candidate:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
