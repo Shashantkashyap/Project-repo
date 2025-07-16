@@ -640,7 +640,7 @@ router.post("/add-section-to-new-exam" , authenticateAdmin, apiLogger, async (re
 });
 
 
-router.post ("login-test-candidates", async (req, res) => {
+router.post("login-test-candidates", async (req, res) => {
   const { sso_id, password } = req.body;
 
   if (!sso_id || !password) {
